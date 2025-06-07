@@ -1,0 +1,24 @@
+name: Trigger update_page
+
+on:
+  push:
+    paths:
+      - 'posts/**'
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate token from GitHub App
+        id: app_token
+        uses: tibdex/github-app-token@v2
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.PRIVATE_KEY }}
+
+      - name: Trigger update_page on target repo
+        run: |
+          curl -X POST https://api.github.com/repos/zunalita/zunalita.github.io/dispatches \
+            -H "Authorization: Bearer ${{ steps.app_token.outputs.token }}" \
+            -H "Accept: application/vnd.github+json" \
+            -d '{"event_type": "update_page"}'
