@@ -1,4 +1,4 @@
-name: Allow only 'posts/' changes
+name: Check 'posts/' folder only
 
 on:
   pull_request:
@@ -9,24 +9,18 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write
 
     steps:
       - uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup tools
-        run: sudo apt-get update && sudo apt-get install -y gh jq
-
-      - name: Auth gh CLI
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
 
       - name: Get changed files
         id: files
         run: |
-          gh pr view ${{ github.event.pull_request.number }} --json files \
-            -q '.files.[].path' > files.txt
+          echo "::group::Getting changed files"
+          git fetch origin ${{ github.base_ref }}
+          git diff --name-only origin/${{ github.base_ref }} > files.txt
+          cat files.txt
+          echo "::endgroup::"
 
       - name: Check paths
         id: check
@@ -37,25 +31,6 @@ jobs:
           done < files.txt
 
           if [[ -n "$blocked" ]]; then
-            echo "$blocked" > invalid.txt
-            echo "blocked=true" >> $GITHUB_OUTPUT
+            echo "::error ::Files outside posts/ folder modified:\n$blocked"
             exit 1
-          else
-            echo "blocked=false" >> $GITHUB_OUTPUT
           fi
-
-      - name: Comment if blocked
-        if: failure() && steps.check.outputs.blocked == 'true'
-        run: |
-          body="This Pull Request modifies files outside the \`posts/\` folder:\n\n$(sed 's/^/- /' invalid.txt)\n\nOnly changes inside \`posts/\` are allowed."
-          gh pr comment ${{ github.event.pull_request.number }} --body "$body"
-
-      - name: Add 'invalid' label
-        if: failure() && steps.check.outputs.blocked == 'true'
-        run: |
-          gh pr edit ${{ github.event.pull_request.number }} --add-label "invalid"
-
-      - name: Remove 'invalid' label if fixed
-        if: success() && steps.check.outputs.blocked == 'false'
-        run: |
-          gh pr edit ${{ github.event.pull_request.number }} --remove-label "invalid"
