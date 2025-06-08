@@ -3,6 +3,8 @@ name: Allow only 'posts/' changes
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  brances:
+    - main
 
 jobs:
   check-posts-folder:
