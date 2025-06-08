@@ -3,8 +3,6 @@ name: Allow only 'posts/' changes
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-  brances:
-    - main
 
 jobs:
   check-posts-folder:
@@ -14,25 +12,15 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: Auth as GitHub App
-        id: app-token
-        uses: tibdex/github-app-token@v1
+      - uses: actions/checkout@v3
         with:
-          app_id: ${{ secrets.APP_ID }}
-          private_key: ${{ secrets.PRIVATE_KEY }}
-
-      - name: Checkout with App token
-        uses: actions/checkout@v3
-        with:
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup tools
         run: sudo apt-get update && sudo apt-get install -y gh jq
 
       - name: Auth gh CLI
-        run: |
-          echo "${{ steps.app-token.outputs.token }}" > token.txt
-          gh auth login --with-token < token.txt
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
 
       - name: Get changed files
         id: files
