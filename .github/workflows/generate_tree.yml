@@ -1,0 +1,62 @@
+name: Generate Posts Directory Index (Only on Forks)
+
+on:
+  push:
+    paths:
+      - 'posts/**'
+
+jobs:
+  generate-index:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if repo is a fork
+        run: |
+          if [ "${{ github.event.repository.fork }}" != "true" ]; then
+            echo "Not a fork. Skipping job."
+            exit 0
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate static index.html like tree
+        run: |
+          echo "<!DOCTYPE html>" > index.html
+          echo "<html><head><meta charset='UTF-8'><title>Posts Index</title><style>body{font-family:monospace;white-space:pre;}</style></head><body>" >> index.html
+          echo "<h2>Posts Directory Structure</h2>" >> index.html
+
+          generate_tree() {
+            local dir=$1
+            local prefix=$2
+            local items=("$dir"/*)
+            local total=${#items[@]}
+            local count=0
+
+            for path in "${items[@]}"; do
+              ((count++))
+              local connector="├──"
+              if [ $count -eq $total ]; then
+                connector="└──"
+              fi
+              local name=$(basename "$path")
+
+              if [ -f "$path" ]; then
+                echo "${prefix}${connector} <a href=\"$path\">$name</a><br>" >> index.html
+              elif [ -d "$path" ]; then
+                echo "${prefix}${connector} $name/<br>" >> index.html
+                generate_tree "$path" "${prefix}    "
+              fi
+            done
+          }
+
+          generate_tree "posts" ""
+
+          echo "</body></html>" >> index.html
+
+      - name: Commit and push index.html
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add index.html
+          git commit -m "Update index.html [skip ci]" || echo "No changes"
+          git push
