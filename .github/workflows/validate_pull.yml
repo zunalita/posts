@@ -1,4 +1,4 @@
-name: Check 'posts/' folder only
+name: Enforce Posts Folder Changes Only
 
 on:
   pull_request:
