@@ -1,17 +1,26 @@
-name: Validate Jekyll Posts
+name: PR Post Preview (Fork Repo Deploy)
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened]
     paths:
       - 'posts/**'
 
 jobs:
-  jekyll-build:
+  build-and-deploy-preview:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
 
     steps:
-      - name: Checkout posts repository (this repo)
+      - name: Checkout PR branch (from fork)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -19,18 +28,25 @@ jobs:
           ruby-version: 3.2
           bundler-cache: true
 
-      - name: Validate Front Matter in Posts
+      - name: Clone target Jekyll site (zunalita.github.io)
+        run: |
+          git clone https://github.com/zunalita/zunalita.github.io.git site
+
+      - name: Copy posts from PR to site/_posts
+        run: |
+          mkdir -p site/_posts
+          cp posts/*.md site/_posts/ || true
+
+      - name: Validate Front Matter
         run: |
           fail=0
-          for file in posts/*.md; do
+          for file in site/_posts/*.md; do
             echo "Checking $file"
-
             if ! awk '/^---/{c++} END{exit !(c>=2)}' "$file"; then
               echo "::error file=$file::Missing front matter block"
               fail=1
               continue
             fi
-
             if ! grep -q '^title:' "$file"; then
               echo "::error file=$file::Missing 'title' field"
               fail=1
@@ -41,14 +57,6 @@ jobs:
             fi
           done
           exit $fail
-
-      - name: Clone zunalita.github.io source (Jekyll site)
-        run: |
-          git clone https://github.com/zunalita/zunalita.github.io.git site
-
-      - name: Copy posts from PR to site/_posts
-        run: |
-          cp posts/* site/_posts/ || true
 
       - name: Add html-proofer to Gemfile
         run: |
@@ -71,9 +79,33 @@ jobs:
           cd site
           bundle exec htmlproofer ./_site --allow-hash-href --disable-external
 
-      - name: Upload Generated Site as Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-site-html
-          path: site/_site/
+      - name: Prepare preview folder
+        run: |
+          mkdir -p preview_site
+          cp -r site/_site/posts preview_site/
+          cp -r site/_site/assets preview_site/ || true
 
+      - name: Deploy to fork's gh-pages-preview branch
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./preview_site
+          external_repository: ${{ github.event.pull_request.head.repo.full_name }}
+          publish_branch: gh-pages-preview
+          destination_dir: preview/pr-${{ github.event.pull_request.number }}
+
+      - name: Comment PR with Preview URL
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request.number;
+            const user = context.payload.pull_request.head.repo.owner.login;
+            const repo = context.payload.pull_request.head.repo.name;
+            const url = `https://${user}.github.io/${repo}/preview/pr-${pr}/posts/`;
+            github.rest.issues.createComment({
+              issue_number: pr,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `Generated Preview: ${url}`
+            });
