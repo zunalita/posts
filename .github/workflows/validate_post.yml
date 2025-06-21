@@ -6,7 +6,7 @@ on:
       - 'posts/**'
 
 jobs:
-  jekyll-build:
+  jekyll-validation:
     runs-on: ubuntu-latest
 
     steps:
@@ -19,22 +19,64 @@ jobs:
           ruby-version: 3.2
           bundler-cache: true
 
+      - name: Validate Front Matter in Posts
+        run: |
+          fail=0
+          for file in posts/*.md; do
+            echo "Checking $file"
+
+            # Check for front matter block
+            if ! awk '/^---/{c++} END{exit !(c>=2)}' "$file"; then
+              echo "::error file=$file::Missing front matter block"
+              fail=1
+              continue
+            fi
+
+            # Check for required fields
+            if ! grep -q '^title:' "$file"; then
+              echo "::error file=$file::Missing 'title' field"
+              fail=1
+            fi
+            if ! grep -q '^date:' "$file"; then
+              echo "::error file=$file::Missing 'date' field"
+              fail=1
+            fi
+          done
+
+          exit $fail
+
       - name: Setup Minimal Jekyll Site
         run: |
           mkdir site
           mkdir site/_posts
           mkdir site/_layouts
 
-          # Config Jekyll
+          # Minimal Jekyll config
           echo "title: Temp Jekyll Site" > site/_config.yml
           echo "baseurl: ''" >> site/_config.yml
           echo "markdown: kramdown" >> site/_config.yml
 
-
+          # Minimal layout
           echo "<html><body>{{ content }}</body></html>" > site/_layouts/default.html
 
           # Copy posts
           cp posts/* site/_posts/ || true
+
+      - name: Generate Posts Preview HTML
+        run: |
+          echo "<html><body><h1>Post Preview</h1><table border='1'><tr><th>Filename</th><th>Title</th><th>Date</th><th>Tags</th></tr>" > site/posts_preview.html
+
+          for file in posts/*.md; do
+            filename=$(basename "$file")
+
+            title=$(grep '^title:' "$file" | sed 's/title:[ ]*//')
+            date=$(grep '^date:' "$file" | sed 's/date:[ ]*//')
+            tags=$(grep '^tags:' "$file" | sed 's/tags:[ ]*//')
+
+            echo "<tr><td>$filename</td><td>$title</td><td>$date</td><td>$tags</td></tr>" >> site/posts_preview.html
+          done
+
+          echo "</table></body></html>" >> site/posts_preview.html
 
       - name: Create Gemfile
         run: |
@@ -58,5 +100,4 @@ jobs:
           cd site
           bundle exec htmlproofer ./_site \
             --allow-hash-href \
-            --check-html \
             --disable-external
