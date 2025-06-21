@@ -1,4 +1,4 @@
-name: Validate PR Posts
+name: Validate Jekyll Posts
 
 on:
   pull_request:
