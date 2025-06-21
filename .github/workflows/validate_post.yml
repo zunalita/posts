@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout posts repository (this repo)
         uses: actions/checkout@v4
 
       - name: Setup Ruby
@@ -25,14 +25,12 @@ jobs:
           for file in posts/*.md; do
             echo "Checking $file"
 
-            # Check front matter block
             if ! awk '/^---/{c++} END{exit !(c>=2)}' "$file"; then
               echo "::error file=$file::Missing front matter block"
               fail=1
               continue
             fi
 
-            # Check required fields
             if ! grep -q '^title:' "$file"; then
               echo "::error file=$file::Missing 'title' field"
               fail=1
@@ -44,44 +42,15 @@ jobs:
           done
           exit $fail
 
-      - name: Setup Minimal Jekyll Site
+      - name: Clone zunalita.github.io source (Jekyll site)
         run: |
-          mkdir site
-          mkdir site/_posts
-          mkdir site/_layouts
+          git clone https://github.com/zunalita/zunalita.github.io.git site
 
-          echo "title: Temp Jekyll Site" > site/_config.yml
-          echo "baseurl: ''" >> site/_config.yml
-          echo "markdown: kramdown" >> site/_config.yml
-
-          echo "<html><body>{{ content }}</body></html>" > site/_layouts/default.html
-
+      - name: Copy posts from PR to site/_posts
+        run: |
           cp posts/* site/_posts/ || true
 
-      - name: Generate Posts Preview HTML
-        run: |
-          echo "<html><body><h1>Post Preview</h1><table border='1'><tr><th>Filename</th><th>Title</th><th>Date</th><th>Tags</th></tr>" > site/posts_preview.html
-
-          for file in posts/*.md; do
-            filename=$(basename "$file")
-
-            title=$(grep '^title:' "$file" | sed 's/title:[ ]*//')
-            date=$(grep '^date:' "$file" | sed 's/date:[ ]*//')
-            tags=$(grep '^tags:' "$file" | sed 's/tags:[ ]*//')
-
-            echo "<tr><td>$filename</td><td>$title</td><td>$date</td><td>$tags</td></tr>" >> site/posts_preview.html
-          done
-
-          echo "</table></body></html>" >> site/posts_preview.html
-
-      - name: Create Gemfile
-        run: |
-          cd site
-          bundle init
-          echo "gem 'jekyll', '~> 4.3'" >> Gemfile
-          echo "gem 'html-proofer'" >> Gemfile
-
-      - name: Install dependencies
+      - name: Install site dependencies
         run: |
           cd site
           bundle install
@@ -98,8 +67,8 @@ jobs:
             --allow-hash-href \
             --disable-external
 
-      - name: Upload Preview HTML as Artifact
+      - name: Upload Generated HTML posts as Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: posts-preview
-          path: site/posts_preview.html
+          name: generated-posts-html
+          path: site/_site/posts/
