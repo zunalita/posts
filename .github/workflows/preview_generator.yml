@@ -8,7 +8,6 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - 'posts/**'
-  workflow_dispatch:
 
 jobs:
   build-and-deploy:
@@ -85,27 +84,10 @@ jobs:
           cp -r site/_site/posts preview_site/
           cp -r site/_site/assets preview_site/ || true
 
-      - name: Upload artifact for Pages
-        uses: actions/upload-pages-artifact@v1
-        with:
-          path: ./preview_site
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v3
 
       - name: Deploy to GitHub Pages
-        uses: actions/configure-pages@v2
-
-      - name: Comment PR with Preview URL
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/deploy-pages@v1
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const prNumber = context.payload.pull_request.number;
-            const user = context.repo.owner;
-            const repo = context.repo.repo;
-            const url = `https://${user}.github.io/${repo}/preview/latest/`;
-            await github.rest.issues.createComment({
-              issue_number: prNumber,
-              owner: user,
-              repo: repo,
-              body: `Generated preview: ${url}`
-            });
+          folder: preview_site
