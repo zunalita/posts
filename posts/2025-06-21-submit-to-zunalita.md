@@ -1,4 +1,5 @@
 ---
+layout: post
 title: "Submit to Zunalita"
 author: "zunalita-admin"
 date: "2025-06-21T19:48:25.436Z"
