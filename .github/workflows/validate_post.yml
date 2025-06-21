@@ -53,6 +53,7 @@ jobs:
       - name: Add html-proofer to Gemfile
         run: |
           cd site
+          echo "" >> Gemfile
           echo "gem 'html-proofer'" >> Gemfile
 
       - name: Install site dependencies
