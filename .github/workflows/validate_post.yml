@@ -50,6 +50,11 @@ jobs:
         run: |
           cp posts/* site/_posts/ || true
 
+      - name: Add html-proofer to Gemfile
+        run: |
+          cd site
+          echo "gem 'html-proofer'" >> Gemfile
+
       - name: Install site dependencies
         run: |
           cd site
@@ -63,9 +68,7 @@ jobs:
       - name: Run HTML Proofer
         run: |
           cd site
-          bundle exec htmlproofer ./_site \
-            --allow-hash-href \
-            --disable-external
+          bundle exec htmlproofer ./_site --allow-hash-href --disable-external
 
       - name: Upload Generated HTML posts as Artifact
         uses: actions/upload-artifact@v4
