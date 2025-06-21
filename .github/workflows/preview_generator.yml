@@ -1,7 +1,11 @@
-name: Posts Preview Deploy (Push)
+name: Posts Preview & Deploy to GitHub Pages
 
 on:
   push:
+    paths:
+      - 'posts/**'
+  pull_request:
+    types: [opened, synchronize, reopened]
     paths:
       - 'posts/**'
 
@@ -10,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pages: write
+      id-token: write
 
     steps:
       - name: Checkout repository
@@ -78,10 +84,27 @@ jobs:
           cp -r site/_site/posts preview_site/
           cp -r site/_site/assets preview_site/ || true
 
-      - name: Deploy to gh-pages-preview branch
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Upload artifact for Pages
+        uses: actions/upload-pages-artifact@v1
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./preview_site
-          publish_branch: gh-pages-preview
-          destination_dir: preview/latest
+          path: ./preview_site
+
+      - name: Deploy to GitHub Pages
+        uses: actions/configure-pages@v2
+
+      - name: Comment PR with Preview URL
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const user = context.repo.owner;
+            const repo = context.repo.repo;
+            const url = `https://${user}.github.io/${repo}/preview/latest/`;
+            await github.rest.issues.createComment({
+              issue_number: prNumber,
+              owner: user,
+              repo: repo,
+              body: `Generated preview: ${url}`
+            });
