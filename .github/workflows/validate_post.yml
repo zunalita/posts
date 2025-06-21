@@ -1,0 +1,62 @@
+name: Validate Jekyll Posts
+
+on:
+  pull_request:
+    paths:
+      - 'posts/**'
+
+jobs:
+  jekyll-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.2
+          bundler-cache: true
+
+      - name: Setup Minimal Jekyll Site
+        run: |
+          mkdir site
+          mkdir site/_posts
+          mkdir site/_layouts
+
+          # Config Jekyll
+          echo "title: Temp Jekyll Site" > site/_config.yml
+          echo "baseurl: ''" >> site/_config.yml
+          echo "markdown: kramdown" >> site/_config.yml
+
+
+          echo "<html><body>{{ content }}</body></html>" > site/_layouts/default.html
+
+          # Copy posts
+          cp posts/* site/_posts/ || true
+
+      - name: Create Gemfile
+        run: |
+          cd site
+          bundle init
+          echo "gem 'jekyll', '~> 4.3'" >> Gemfile
+          echo "gem 'html-proofer'" >> Gemfile
+
+      - name: Install dependencies
+        run: |
+          cd site
+          bundle install
+
+      - name: Build Jekyll site
+        run: |
+          cd site
+          bundle exec jekyll build --verbose
+
+      - name: Run HTML Proofer
+        run: |
+          cd site
+          bundle exec htmlproofer ./_site \
+            --allow-hash-href \
+            --check-html \
+            --disable-external
