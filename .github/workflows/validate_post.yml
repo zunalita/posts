@@ -71,8 +71,9 @@ jobs:
           cd site
           bundle exec htmlproofer ./_site --allow-hash-href --disable-external
 
-      - name: Upload Generated HTML posts as Artifact
+      - name: Upload Generated Site as Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: generated-posts-html
-          path: site/_site/posts/
+          name: generated-site-html
+          path: site/_site/
+
