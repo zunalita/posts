@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Close PR
-        uses: peter-evans/close-pull-request@v2
+        uses: peter-evans/close-pull-request@v3
         with:
           pull-request-number: ${{ github.event.pull_request.number }}
           comment: 'Closing this PR automatically because it has the label "test".'
