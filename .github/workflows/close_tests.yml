@@ -1,4 +1,4 @@
-name: Close PR with "test" Label
+name: Auto-close PRs with "test" Label
 
 on:
   pull_request:
@@ -6,13 +6,13 @@ on:
       - labeled
 
 jobs:
-  close-pr-if-test-label:
-    runs-on: ubuntu-latest
+  close-pr:
     if: contains(github.event.pull_request.labels.*.name, 'test')
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Close PR
-        uses: peter-evans/close-pull-request@v3
-        with:
-          pull-request-number: ${{ github.event.pull_request.number }}
-          comment: 'Closing this PR automatically because it has the label "test".'
+      - name: Close PR via GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr close ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --comment "❌ This PR was automatically closed because it has the label 'test'."
