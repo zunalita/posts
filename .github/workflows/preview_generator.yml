@@ -1,16 +1,18 @@
-name: Validate PR Posts
+name: Posts Preview Deploy (Push)
 
 on:
-  pull_request:
+  push:
     paths:
       - 'posts/**'
 
 jobs:
-  validate:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
-      - name: Checkout PR branch
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Ruby
@@ -19,11 +21,11 @@ jobs:
           ruby-version: 3.2
           bundler-cache: true
 
-      - name: Clone zunalita.github.io (Jekyll source)
+      - name: Clone zunalita.github.io source
         run: |
           git clone https://github.com/zunalita/zunalita.github.io.git site
 
-      - name: Copy PR posts to site/_posts
+      - name: Copy posts to site/_posts
         run: |
           mkdir -p site/_posts
           cp posts/*.md site/_posts/ || true
@@ -49,12 +51,36 @@ jobs:
           done
           exit $fail
 
-      - name: Install Jekyll Dependencies
+      - name: Add html-proofer
+        run: |
+          cd site
+          echo "gem 'html-proofer'" >> Gemfile
+
+      - name: Install site dependencies
         run: |
           cd site
           bundle install
 
-      - name: Test Build
+      - name: Build Jekyll site
         run: |
           cd site
-          bundle exec jekyll build
+          bundle exec jekyll build --verbose
+
+      - name: Run HTML Proofer
+        run: |
+          cd site
+          bundle exec htmlproofer ./_site --allow-hash-href --disable-external
+
+      - name: Prepare Preview Folder
+        run: |
+          mkdir -p preview_site
+          cp -r site/_site/posts preview_site/
+          cp -r site/_site/assets preview_site/ || true
+
+      - name: Deploy to gh-pages-preview branch
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./preview_site
+          publish_branch: gh-pages-preview
+          destination_dir: preview/latest
