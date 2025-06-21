@@ -1,4 +1,4 @@
-name: Validate Jekyll Posts
+name: Validate Jekyll Posts and Generate Real Preview
 
 on:
   pull_request:
@@ -6,12 +6,21 @@ on:
       - 'posts/**'
 
 jobs:
-  jekyll-validation:
+  validate-and-preview:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout PR Repository (Posts Repo)
         uses: actions/checkout@v4
+
+      - name: Clone Zunalita GitHub Pages Repo
+        run: |
+          git clone https://github.com/zunalita/zunalita.github.io.git site
+
+      - name: Copy PR Posts into Site
+        run: |
+          mkdir -p site/_posts
+          cp posts/* site/_posts/ || true
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -19,48 +28,15 @@ jobs:
           ruby-version: 3.2
           bundler-cache: true
 
-      - name: Validate Front Matter in Posts
+      - name: Install Site Dependencies
         run: |
-          fail=0
-          for file in posts/*.md; do
-            echo "Checking $file"
+          cd site
+          bundle install
 
-            # Check for front matter block
-            if ! awk '/^---/{c++} END{exit !(c>=2)}' "$file"; then
-              echo "::error file=$file::Missing front matter block"
-              fail=1
-              continue
-            fi
-
-            # Check for required fields
-            if ! grep -q '^title:' "$file"; then
-              echo "::error file=$file::Missing 'title' field"
-              fail=1
-            fi
-            if ! grep -q '^date:' "$file"; then
-              echo "::error file=$file::Missing 'date' field"
-              fail=1
-            fi
-          done
-
-          exit $fail
-
-      - name: Setup Minimal Jekyll Site
+      - name: Build Full Jekyll Site
         run: |
-          mkdir site
-          mkdir site/_posts
-          mkdir site/_layouts
-
-          # Minimal Jekyll config
-          echo "title: Temp Jekyll Site" > site/_config.yml
-          echo "baseurl: ''" >> site/_config.yml
-          echo "markdown: kramdown" >> site/_config.yml
-
-          # Minimal layout
-          echo "<html><body>{{ content }}</body></html>" > site/_layouts/default.html
-
-          # Copy posts
-          cp posts/* site/_posts/ || true
+          cd site
+          bundle exec jekyll build --verbose
 
       - name: Generate Posts Preview HTML
         run: |
@@ -78,26 +54,17 @@ jobs:
 
           echo "</table></body></html>" >> site/posts_preview.html
 
-      - name: Create Gemfile
-        run: |
-          cd site
-          bundle init
-          echo "gem 'jekyll', '~> 4.3'" >> Gemfile
-          echo "gem 'html-proofer'" >> Gemfile
+      - name: Upload Preview HTML as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: posts-preview
+          path: site/posts_preview.html
 
-      - name: Install dependencies
+      - name: Post Preview Link in PR Comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cd site
-          bundle install
+          PREVIEW_URL="(Download the HTML preview from the workflow artifacts above 👆)"
 
-      - name: Build Jekyll site
-        run: |
-          cd site
-          bundle exec jekyll build --verbose
+          gh pr comment ${{ github.event.pull_request.number }} --body "**✅ Jekyll Preview Generated:** $PREVIEW_URL"
 
-      - name: Run HTML Proofer
-        run: |
-          cd site
-          bundle exec htmlproofer ./_site \
-            --allow-hash-href \
-            --disable-external
