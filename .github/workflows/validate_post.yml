@@ -58,3 +58,19 @@ jobs:
         run: |
           cd site
           bundle exec jekyll build
+
+      - name: Install html-proofer
+        run: |
+          gem install html-proofer
+
+      - name: Run HTML Proofer
+        run: |
+          cd site
+          htmlproofer ./_site --check-favicon --disable-external --allow-hash-href --check-html --check-img-http
+
+      - name: Run Additional Checks (Optional)
+        run: |
+          cd site
+          # Adicionar outros checks, como validação de Markdown ou links internos
+          # Exemplo: MarkdownLint para checar a formatação dos arquivos .md
+          markdownlint site/_posts/**/*.md
