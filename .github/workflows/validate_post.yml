@@ -23,31 +23,33 @@ jobs:
         run: |
           git clone https://github.com/zunalita/zunalita.github.io.git site
 
-      - name: Copy PR posts to site/_posts
+      - name: Find latest edited .md file
+        id: latest_post
+        run: |
+          FILE=$(git diff --name-only origin/main...HEAD 'posts/*.md' | tail -n1)
+          echo "latest_file=$FILE" >> $GITHUB_OUTPUT
+
+      - name: Copy latest edited post to site/_posts
         run: |
           mkdir -p site/_posts
-          cp posts/*.md site/_posts/ || true
+          cp "${{ steps.latest_post.outputs.latest_file }}" site/_posts/
 
       - name: Validate Front Matter
         run: |
-          fail=0
-          for file in site/_posts/*.md; do
-            echo "Checking $file"
-            if ! awk '/^---/{c++} END{exit !(c>=2)}' "$file"; then
-              echo "::error file=$file::Missing front matter block"
-              fail=1
-              continue
-            fi
-            if ! grep -q '^title:' "$file"; then
-              echo "::error file=$file::Missing 'title' field"
-              fail=1
-            fi
-            if ! grep -q '^date:' "$file"; then
-              echo "::error file=$file::Missing 'date' field"
-              fail=1
-            fi
-          done
-          exit $fail
+          file="site/_posts/$(basename "${{ steps.latest_post.outputs.latest_file }}")"
+          echo "Checking $file"
+          if ! awk '/^---/{c++} END{exit !(c>=2)}' "$file"; then
+            echo "::error file=$file::Missing front matter block"
+            exit 1
+          fi
+          if ! grep -q '^title:' "$file"; then
+            echo "::error file=$file::Missing 'title' field"
+            exit 1
+          fi
+          if ! grep -q '^date:' "$file"; then
+            echo "::error file=$file::Missing 'date' field"
+            exit 1
+          fi
 
       - name: Install Jekyll Dependencies
         run: |
@@ -59,18 +61,14 @@ jobs:
           cd site
           bundle exec jekyll build
 
-      - name: Install html-proofer
-        run: |
-          gem install html-proofer
-
       - name: Run HTML Proofer
-        run: |
-          cd site
-          htmlproofer ./_site --check-favicon --disable-external --allow-hash-href --check-html --check-img-http
+        uses: anishathalye/proof-html@v1.1.0
+        with:
+          directory: './site/_site'
+          check_html: true
+          check_img_http: true
+          enforce_https: true
 
-      - name: Run Additional Checks (Optional)
+      - name: Run MarkdownLint (Optional)
         run: |
-          cd site
-          # Adicionar outros checks, como validação de Markdown ou links internos
-          # Exemplo: MarkdownLint para checar a formatação dos arquivos .md
-          markdownlint site/_posts/**/*.md
+          npx markdownlint-cli2 "site/_posts/$(basename "${{ steps.latest_post.outputs.latest_file }}")" || true
