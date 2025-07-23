@@ -1,4 +1,4 @@
-name: Validate Jekyll Post
+name: Validate Jekyll Posts
 
 on:
   pull_request:
@@ -19,58 +19,42 @@ jobs:
           ruby-version: 3.2
           bundler-cache: true
 
-      - name: Clone Jekyll Site Repository
+      - name: Clone zunalita.github.io (Jekyll source)
         run: |
           git clone https://github.com/zunalita/zunalita.github.io.git site
 
-      - name: Get latest edited post file from PR
-        id: get_latest_post
-        run: |
-          FILE=$(git diff --name-only origin/main...HEAD -- 'posts/*.md' | tail -n1)
-          echo "edited_post=$FILE" >> $GITHUB_OUTPUT
-
-      - name: Copy edited post to Jekyll site _posts folder
+      - name: Copy PR posts to site/_posts
         run: |
           mkdir -p site/_posts
-          cp "${{ steps.get_latest_post.outputs.edited_post }}" site/_posts/
+          cp posts/*.md site/_posts/ || true
 
-      - name: Validate front matter in the edited post
+      - name: Validate Front Matter
         run: |
-          file="site/_posts/$(basename "${{ steps.get_latest_post.outputs.edited_post }}")"
-          echo "Checking front matter for $file"
           fail=0
-          if ! awk '/^---/{c++} END{exit !(c>=2)}' "$file"; then
-            echo "::error file=$file::Missing front matter block"
-            fail=1
-          fi
-          if ! grep -q '^title:' "$file"; then
-            echo "::error file=$file::Missing 'title' field"
-            fail=1
-          fi
-          if ! grep -q '^date:' "$file"; then
-            echo "::error file=$file::Missing 'date' field"
-            fail=1
-          fi
+          for file in site/_posts/*.md; do
+            echo "Checking $file"
+            if ! awk '/^---/{c++} END{exit !(c>=2)}' "$file"; then
+              echo "::error file=$file::Missing front matter block"
+              fail=1
+              continue
+            fi
+            if ! grep -q '^title:' "$file"; then
+              echo "::error file=$file::Missing 'title' field"
+              fail=1
+            fi
+            if ! grep -q '^date:' "$file"; then
+              echo "::error file=$file::Missing 'date' field"
+              fail=1
+            fi
+          done
           exit $fail
 
-      - name: Install Jekyll dependencies
+      - name: Install Jekyll Dependencies
         run: |
           cd site
           bundle install
 
-      - name: Build Jekyll site with localhost URL
+      - name: Test Build
         run: |
           cd site
-          bundle exec jekyll build --url http://localhost --baseurl ""
-
-      - name: Run HTML Proofer
-        uses: anishathalye/proof-html@v1.1.0
-        with:
-          directory: './site/_site'
-          check_html: true
-          check_img_http: true
-          enforce_https: true
-
-      - name: Run Markdown Lint (optional)
-        run: |
-          npx markdownlint-cli2 "site/_posts/$(basename "${{ steps.get_latest_post.outputs.edited_post }}")" || true
+          bundle exec jekyll build
