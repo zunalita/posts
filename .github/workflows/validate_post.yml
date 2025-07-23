@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # necessário para histórico completo
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -23,10 +25,19 @@ jobs:
         run: |
           git clone https://github.com/zunalita/zunalita.github.io.git site
 
+      - name: Fetch main branch
+        run: |
+          git fetch origin main
+
       - name: Find latest edited .md file
         id: latest_post
         run: |
-          FILE=$(git diff --name-only origin/main...HEAD 'posts/*.md' | tail -n1)
+          FILE=$(git diff --name-only origin/main...HEAD -- 'posts/*.md' | tail -n1)
+          if [ -z "$FILE" ]; then
+            echo "Nenhum arquivo .md encontrado nesta PR."
+            exit 1
+          fi
+          echo "Arquivo mais recente: $FILE"
           echo "latest_file=$FILE" >> $GITHUB_OUTPUT
 
       - name: Copy latest edited post to site/_posts
