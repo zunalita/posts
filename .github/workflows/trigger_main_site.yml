@@ -1,4 +1,4 @@
-name: Trigger update_page
+name: Dispatch Update Page
 
 on:
   push:
