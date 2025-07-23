@@ -1,4 +1,4 @@
-name: Validate Jekyll Posts
+name: Validate Jekyll Post
 
 on:
   pull_request:
@@ -19,47 +19,49 @@ jobs:
           ruby-version: 3.2
           bundler-cache: true
 
-      - name: Clone zunalita.github.io (Jekyll source)
+      - name: Clone Jekyll Site Repository
         run: |
           git clone https://github.com/zunalita/zunalita.github.io.git site
 
-      - name: Find latest edited .md file
-        id: latest_post
+      - name: Get latest edited post file from PR
+        id: get_latest_post
         run: |
-          FILE=$(git diff --name-only origin/main...HEAD 'posts/*.md' | tail -n1)
-          echo "latest_file=$FILE" >> $GITHUB_OUTPUT
+          FILE=$(git diff --name-only origin/main...HEAD -- 'posts/*.md' | tail -n1)
+          echo "edited_post=$FILE" >> $GITHUB_OUTPUT
 
-      - name: Copy latest edited post to site/_posts
+      - name: Copy edited post to Jekyll site _posts folder
         run: |
           mkdir -p site/_posts
-          cp "${{ steps.latest_post.outputs.latest_file }}" site/_posts/
+          cp "${{ steps.get_latest_post.outputs.edited_post }}" site/_posts/
 
-      - name: Validate Front Matter
+      - name: Validate front matter in the edited post
         run: |
-          file="site/_posts/$(basename "${{ steps.latest_post.outputs.latest_file }}")"
-          echo "Checking $file"
+          file="site/_posts/$(basename "${{ steps.get_latest_post.outputs.edited_post }}")"
+          echo "Checking front matter for $file"
+          fail=0
           if ! awk '/^---/{c++} END{exit !(c>=2)}' "$file"; then
             echo "::error file=$file::Missing front matter block"
-            exit 1
+            fail=1
           fi
           if ! grep -q '^title:' "$file"; then
             echo "::error file=$file::Missing 'title' field"
-            exit 1
+            fail=1
           fi
           if ! grep -q '^date:' "$file"; then
             echo "::error file=$file::Missing 'date' field"
-            exit 1
+            fail=1
           fi
+          exit $fail
 
-      - name: Install Jekyll Dependencies
+      - name: Install Jekyll dependencies
         run: |
           cd site
           bundle install
 
-      - name: Test Build
+      - name: Build Jekyll site with localhost URL
         run: |
           cd site
-          bundle exec jekyll build
+          bundle exec jekyll build --url http://localhost --baseurl ""
 
       - name: Run HTML Proofer
         uses: anishathalye/proof-html@v1.1.0
@@ -69,6 +71,6 @@ jobs:
           check_img_http: true
           enforce_https: true
 
-      - name: Run MarkdownLint (Optional)
+      - name: Run Markdown Lint (optional)
         run: |
-          npx markdownlint-cli2 "site/_posts/$(basename "${{ steps.latest_post.outputs.latest_file }}")" || true
+          npx markdownlint-cli2 "site/_posts/$(basename "${{ steps.get_latest_post.outputs.edited_post }}")" || true
