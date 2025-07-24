@@ -16,4 +16,4 @@ To make sure everything runs smoothly, please check the items below:
 - [ ] I checked for typos and formatting errors.
 ---
 
-*By continuing, you accept the project's [contributing guidelines](/contributing.md) and agree to follow them.*
+*By continuing, you accept the project's [contributing guidelines](/zunalita/posts/contributing.md) and agree to follow them.*
