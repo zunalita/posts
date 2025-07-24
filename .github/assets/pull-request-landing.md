@@ -1,17 +1,19 @@
-# Welcome to [zunalita post request](https://github.com/zunalita/posts)!
+**Welcome to [zunalita/posts](https://github.com/zunalita/posts)! And thank you for your contribution!**
 
-Thank you for the contribution!
+If you're new around here, don't worry—your contribution will be reviewed as soon as possible.
 
-If you're new around here, don't worry — we'll review your contribution as soon as possible.
+To make sure everything runs smoothly, please check the items below:
 
-Some quick tips:
-- Follow the project's guidelines.
-- Make sure your code has been tested.
-- Link any related issue with `Fixes #123`.
-
-Checklist:
-- [ ] I used some assets with consent of the owner.
-- [ ] I followed the project’s coding standards.
+---
+- [ ] I used assets with the owner's consent.
+      
+- [ ] I followed the project's coding standards.
+      
 - [ ] I tested my changes.
-- [ ] I linked related issues in the description.
+      
+- [ ] I linked relevant issues in the description.
+      
 - [ ] I checked for typos and formatting errors.
+---
+
+*By continuing, you accept the project's [contributing guidelines](/contributing.md) and agree to follow them.*
