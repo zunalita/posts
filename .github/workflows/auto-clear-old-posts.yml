@@ -1,0 +1,52 @@
+name: Archive and Clean Up Old Posts
+
+on:
+  schedule:
+    - cron: '0 * * * *' # Every hour
+  workflow_dispatch:
+
+jobs:
+  archive_cleanup:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        
+      - name: Set up Git
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+        
+      - name: List posts and check if we need to archive
+        run: |
+          # List all posts ordered by date
+          posts=$(ls -1 posts/*.md | sort -r)  # Inverse order (more recent first)
+          total_posts=$(echo "$posts" | wc -l)
+          
+          if [ "$total_posts" -gt 120 ]; then
+            echo "Total posts: $total_posts. Proceeding with archive and cleanup."
+            
+            # Get the oldest 20 posts
+            oldest_posts=$(echo "$posts" | tail -n 20)
+            
+            # Generate a release name based on date range of the removed posts
+            start_date=$(head -n 1 <<< "$oldest_posts" | cut -d'-' -f1-3)
+            end_date=$(tail -n 1 <<< "$oldest_posts" | cut -d'-' -f1-3)
+            release_name="Archive: $start_date - $end_date"
+            
+            # Create a new release with the removed posts
+            echo "Creating release with the following posts: $oldest_posts"
+            gh release create "$release_name" $oldest_posts --title "$release_name" --notes "Archived posts from $start_date to $end_date."
+            
+            # Remove the oldest posts
+            echo "Removing posts: $oldest_posts"
+            rm $oldest_posts
+            
+            # Commit and push the changes
+            git add posts/
+            git commit -m "optimization: Removed oldest posts and archived them"
+            git push origin main
+          else
+            echo "No need to archive. Total posts are $total_posts."
+          fi
