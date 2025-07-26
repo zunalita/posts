@@ -1,0 +1,60 @@
+name: Validate Jekyll Posts
+
+on:
+  pull_request:
+    paths:
+      - 'posts/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.2
+          bundler-cache: true
+
+      - name: Clone zunalita.github.io (Jekyll source)
+        run: |
+          git clone https://github.com/zunalita/zunalita.github.io.git site
+
+      - name: Copy PR posts to site/_posts
+        run: |
+          mkdir -p site/_posts
+          cp posts/*.md site/_posts/ || true
+
+      - name: Validate Front Matter
+        run: |
+          fail=0
+          for file in site/_posts/*.md; do
+            echo "Checking $file"
+            if ! awk '/^---/{c++} END{exit !(c>=2)}' "$file"; then
+              echo "::error file=$file::Missing front matter block"
+              fail=1
+              continue
+            fi
+            if ! grep -q '^title:' "$file"; then
+              echo "::error file=$file::Missing 'title' field"
+              fail=1
+            fi
+            if ! grep -q '^date:' "$file"; then
+              echo "::error file=$file::Missing 'date' field"
+              fail=1
+            fi
+          done
+          exit $fail
+
+      - name: Install Jekyll Dependencies
+        run: |
+          cd site
+          bundle install
+
+      - name: Test Build
+        run: |
+          cd site
+          bundle exec jekyll build

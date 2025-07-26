@@ -1,0 +1,36 @@
+name: Enforce Posts Folder Changes Only
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-posts-folder:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Get changed files
+        id: files
+        run: |
+          echo "::group::Getting changed files"
+          git fetch origin ${{ github.base_ref }}
+          git diff --name-only origin/${{ github.base_ref }} > files.txt
+          cat files.txt
+          echo "::endgroup::"
+
+      - name: Check paths
+        id: check
+        run: |
+          blocked=""
+          while read file; do
+            [[ "$file" != posts/* ]] && blocked+="$file"$'\n'
+          done < files.txt
+
+          if [[ -n "$blocked" ]]; then
+            echo "::error ::Files outside posts/ folder modified:\n$blocked"
+            exit 1
+          fi
