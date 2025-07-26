@@ -29,11 +29,15 @@ jobs:
             archive_name="../Archive-$(date +'%Y-%m-%d').tar.gz"
             echo "Creating archive $archive_name"
 
+            # Create the archive first
             tar -czf "$archive_name" $files_to_delete
-            echo "archive_name=$archive_name" >> $GITHUB_OUTPUT
+            echo "Archive created."
 
+            # Then delete the files
             echo "$files_to_delete" | xargs rm -f
+            echo "Files deleted."
 
+            echo "archive_name=$archive_name" >> $GITHUB_OUTPUT
             echo "deleted=true" >> $GITHUB_OUTPUT
           else
             echo "deleted=false" >> $GITHUB_OUTPUT
