@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'posts/**'
+  workflow_dispatch:
 
 jobs:
   archive-and-prune:
