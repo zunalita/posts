@@ -1,90 +1,40 @@
-name: Archive and Clean Up Old Posts
+name: Limit Posts Folder to 20 Files
 
 on:
-  schedule:
-    - cron: '12 4 * * 2'  # Runs at 04:12, only on Tuesday
+  push:
+    paths:
+      - 'posts/**'
   workflow_dispatch:
 
 jobs:
-  archive_cleanup:
+  manage-posts:
     runs-on: ubuntu-latest
 
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      - name: Set up Git
+      - name: Limit /posts to 20 files
         run: |
-          git config --global user.name 'GitHub Actions'
-          git config --global user.email 'actions@github.com'
+          cd posts
+          total_files=$(ls -1 | wc -l)
+          echo "Total files in posts: $total_files"
+          if [ "$total_files" -gt 20 ]; then
+            to_delete=$((total_files - 20))
+            echo "Deleting $to_delete oldest files"
+            ls -1tr | head -n $to_delete | xargs rm -f
+          else
+            echo "No files need to be deleted."
+          fi
 
-      - name: List posts sorted by modification date
-        id: list_posts
+      - name: Commit changes if any files deleted
         run: |
-          posts=$(ls -1t ./posts/*.md)
-          total_posts=$(echo "$posts" | wc -l)
-          echo "posts<<EOF" >> $GITHUB_OUTPUT
-          echo "$posts" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          echo "total_posts=$total_posts" >> $GITHUB_OUTPUT
-
-      - name: Check if archiving is needed
-        if: ${{ steps.list_posts.outputs.total_posts && (steps.list_posts.outputs.total_posts > 120) }}
-        run: echo "More than 120 posts found. Proceeding with archive."
-
-      - name: Get oldest 20 posts
-        id: get_oldest
-        run: |
-          oldest_posts=$(echo "${{ steps.list_posts.outputs.posts }}" | tail -n 20)
-          echo "oldest_posts<<EOF" >> $GITHUB_OUTPUT
-          echo "$oldest_posts" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Get date range for release name
-        id: date_range
-        run: |
-          start_date=$(head -n 1 <<< "${{ steps.get_oldest.outputs.oldest_posts }}" | xargs -I {} stat --format='%y' {} | cut -d' ' -f1)
-          end_date=$(tail -n 1 <<< "${{ steps.get_oldest.outputs.oldest_posts }}" | xargs -I {} stat --format='%y' {} | cut -d' ' -f1)
-          echo "start_date=$start_date" >> $GITHUB_OUTPUT
-          echo "end_date=$end_date" >> $GITHUB_OUTPUT
-          echo "release_name=archive-${start_date}_to_${end_date}" >> $GITHUB_OUTPUT
-
-      - name: Create archive tarball of oldest posts
-        run: |
-          tarball="${{ steps.date_range.outputs.release_name }}.tar.gz"
-          echo "Creating archive $tarball"
-          chmod +r ./posts/*.md
-          tar -czf "$tarball" ${{ steps.get_oldest.outputs.oldest_posts }}
-          echo "archive_file=$tarball" >> $GITHUB_OUTPUT
-
-      - name: Create GitHub release
-        run: |
-          gh release create "${{ steps.date_range.outputs.release_name }}" \
-            --title "${{ steps.date_range.outputs.release_name }}" \
-            --notes "Archived posts from ${{ steps.date_range.outputs.start_date }} to ${{ steps.date_range.outputs.end_date }}." \
-            --repo $GITHUB_REPOSITORY
-
-      - name: Upload archive asset to release
-        run: |
-          gh release upload "${{ steps.date_range.outputs.release_name }}" \
-            "${{ steps.create_archive.outputs.archive_file }}" \
-            --repo $GITHUB_REPOSITORY
-
-      - name: Delete archived posts
-        run: |
-          echo "Deleting posts:"
-          echo "${{ steps.get_oldest.outputs.oldest_posts }}"
-          rm ${{ steps.get_oldest.outputs.oldest_posts }}
-
-      - name: Commit and push changes
-        run: |
-          git add ./posts/
-          git commit -m "optimization: Removed oldest posts and archived them in release ${{ steps.date_range.outputs.release_name }}"
-          git push origin main
-
-      - name: No archive needed
-        if: ${{ steps.list_posts.outputs.total_posts && (steps.list_posts.outputs.total_posts <= 120) }}
-        run: echo "No need to archive. Total posts are ${{ steps.list_posts.outputs.total_posts }}."
+          if [[ -n $(git status -s) ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add posts/
+            git commit -m "chore: prune posts folder to max 20 files"
+            git push
+          else
+            echo "No changes to commit."
+          fi
