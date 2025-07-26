@@ -56,6 +56,7 @@ jobs:
         run: |
           tarball="${{ steps.date_range.outputs.release_name }}.tar.gz"
           echo "Creating archive $tarball"
+          chmod +r ./posts/*.md
           tar -czf "$tarball" ${{ steps.get_oldest.outputs.oldest_posts }}
           echo "archive_file=$tarball" >> $GITHUB_OUTPUT
 
