@@ -21,28 +21,69 @@ jobs:
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
 
-      - name: List posts and check if we need to archive
+      - name: List posts sorted by modification date
+        id: list_posts
         run: |
-          posts=$(ls -1 ./posts/*.md | sort -r)
+          posts=$(ls -1t ./posts/*.md)
           total_posts=$(echo "$posts" | wc -l)
+          echo "posts<<EOF" >> $GITHUB_OUTPUT
+          echo "$posts" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "total_posts=$total_posts" >> $GITHUB_OUTPUT
 
-          if [ "$total_posts" -gt 120 ]; then
-            echo "Total posts: $total_posts. Proceeding with archive and cleanup."
+      - name: Check if archiving is needed
+        if: ${{ steps.list_posts.outputs.total_posts && (steps.list_posts.outputs.total_posts > 120) }}
+        run: echo "More than 120 posts found. Proceeding with archive."
 
-            oldest_posts=$(echo "$posts" | tail -n 20)
+      - name: Get oldest 20 posts
+        id: get_oldest
+        run: |
+          oldest_posts=$(echo "${{ steps.list_posts.outputs.posts }}" | tail -n 20)
+          echo "oldest_posts<<EOF" >> $GITHUB_OUTPUT
+          echo "$oldest_posts" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
-            start_date=$(head -n 1 <<< "$oldest_posts" | xargs -I {} stat --format='%y' {} | cut -d' ' -f1)
-            end_date=$(tail -n 1 <<< "$oldest_posts" | xargs -I {} stat --format='%y' {} | cut -d' ' -f1)
-            release_name="archive-${start_date}_to_${end_date}"
+      - name: Get date range for release name
+        id: date_range
+        run: |
+          start_date=$(head -n 1 <<< "${{ steps.get_oldest.outputs.oldest_posts }}" | xargs -I {} stat --format='%y' {} | cut -d' ' -f1)
+          end_date=$(tail -n 1 <<< "${{ steps.get_oldest.outputs.oldest_posts }}" | xargs -I {} stat --format='%y' {} | cut -d' ' -f1)
+          echo "start_date=$start_date" >> $GITHUB_OUTPUT
+          echo "end_date=$end_date" >> $GITHUB_OUTPUT
+          echo "release_name=archive-${start_date}_to_${end_date}" >> $GITHUB_OUTPUT
 
-            echo "Creating release with the following posts: $oldest_posts"
-            gh release create "$release_name" $oldest_posts --title "$release_name" --notes "Archived posts from $start_date to $end_date."
+      - name: Create archive tarball of oldest posts
+        run: |
+          tarball="${{ steps.date_range.outputs.release_name }}.tar.gz"
+          echo "Creating archive $tarball"
+          tar -czf "$tarball" ${{ steps.get_oldest.outputs.oldest_posts }}
+          echo "archive_file=$tarball" >> $GITHUB_OUTPUT
 
-            echo "Removing posts: $oldest_posts"
-            rm $oldest_posts
+      - name: Create GitHub release
+        run: |
+          gh release create "${{ steps.date_range.outputs.release_name }}" \
+            --title "${{ steps.date_range.outputs.release_name }}" \
+            --notes "Archived posts from ${{ steps.date_range.outputs.start_date }} to ${{ steps.date_range.outputs.end_date }}." \
+            --repo $GITHUB_REPOSITORY
 
-            git add ./posts/
-            git commit -m "optimization: Removed oldest posts and archived them"
-            git push origin main
-          else
-            echo "No need to archive. Total posts are $total_posts."
+      - name: Upload archive asset to release
+        run: |
+          gh release upload "${{ steps.date_range.outputs.release_name }}" \
+            "${{ steps.create_archive.outputs.archive_file }}" \
+            --repo $GITHUB_REPOSITORY
+
+      - name: Delete archived posts
+        run: |
+          echo "Deleting posts:"
+          echo "${{ steps.get_oldest.outputs.oldest_posts }}"
+          rm ${{ steps.get_oldest.outputs.oldest_posts }}
+
+      - name: Commit and push changes
+        run: |
+          git add ./posts/
+          git commit -m "optimization: Removed oldest posts and archived them in release ${{ steps.date_range.outputs.release_name }}"
+          git push origin main
+
+      - name: No archive needed
+        if: ${{ steps.list_posts.outputs.total_posts && (steps.list_posts.outputs.total_posts <= 120) }}
+        run: echo "No need to archive. Total posts are ${{ steps.list_posts.outputs.total_posts }}."
