@@ -63,5 +63,21 @@ def set_output(name, value):
 set_output('should_close', str(should_close).lower())
 if should_close:
     set_output('comment', f"[Beta auto closer]: This pull request was automatically closed because it contains more than 10 forbidden keywords: {', '.join(found)}.\nSome of your content may be used to improve the keyword dictionary. Your request can still be accepted in the future, even if this PR was closed automatically.")
+    # Update the dictionary file with new found words (no duplicates)
+    try:
+        with open(keywords_path, 'r+') as f:
+            existing = set()
+            for line in f:
+                for w in line.strip().split(';'):
+                    if w.strip():
+                        existing.add(w.strip().lower())
+            new_words = set(found) - existing
+            if new_words:
+                all_words = list(existing | new_words)
+                f.seek(0)
+                f.write(';'.join(sorted(all_words)))
+                f.truncate()
+    except Exception as e:
+        print(f"::warning::Failed to update keyword dictionary: {e}")
 else:
     set_output('comment', '')
