@@ -1,20 +1,19 @@
-name: Limit Posts Folder to 20 Files
+name: Archive and Limit Posts Folder as Release
 
 on:
   push:
     paths:
       - 'posts/**'
-  workflow_dispatch:
 
 jobs:
-  manage-posts:
+  archive-and-prune:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Limit /posts to 20 files
+      - name: Prepare archive and delete files
+        id: prune
         run: |
           cd posts
           total_files=$(ls -1 | wc -l)
@@ -22,19 +21,41 @@ jobs:
           if [ "$total_files" -gt 20 ]; then
             to_delete=$((total_files - 20))
             echo "Deleting $to_delete oldest files"
-            ls -1tr | head -n $to_delete | xargs rm -f
+
+            files_to_delete=$(ls -1tr | head -n $to_delete)
+            echo "$files_to_delete"
+
+            archive_name="../Archive-$(date +'%Y-%m-%d').tar.gz"
+            echo "Creating archive $archive_name"
+
+            tar -czf "$archive_name" $files_to_delete
+            echo "archive_name=$archive_name" >> $GITHUB_OUTPUT
+
+            echo "$files_to_delete" | xargs rm -f
+
+            echo "deleted=true" >> $GITHUB_OUTPUT
           else
-            echo "No files need to be deleted."
+            echo "deleted=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Commit changes if any files deleted
+      - name: Commit changes if files deleted
+        if: steps.prune.outputs.deleted == 'true'
         run: |
-          if [[ -n $(git status -s) ]]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add posts/
-            git commit -m "chore: prune posts folder to max 20 files"
-            git push
-          else
-            echo "No changes to commit."
-          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add posts/
+          git commit -m "chore: prune posts folder to max 20 files"
+          git push
+
+      - name: Create or update release with archive
+        if: steps.prune.outputs.deleted == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "archive-$(date +'%Y-%m-%d')"
+          name: "Archive: $(date +'%Y-%m-%d')"
+          body: "Auto archive of deleted posts on $(date +'%Y-%m-%d')"
+          draft: false
+          prerelease: false
+          files: ${{ steps.prune.outputs.archive_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
