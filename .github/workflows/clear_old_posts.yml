@@ -9,6 +9,9 @@ jobs:
   archive_cleanup:
     runs-on: ubuntu-latest
 
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -20,34 +23,26 @@ jobs:
 
       - name: List posts and check if we need to archive
         run: |
-          # List all posts ordered by modification date (most recent first)
-          posts=$(ls -1 ./posts/*.md | sort -r)  # List all markdown files in posts/ sorted by modification date
-
+          posts=$(ls -1 ./posts/*.md | sort -r)
           total_posts=$(echo "$posts" | wc -l)
 
           if [ "$total_posts" -gt 120 ]; then
             echo "Total posts: $total_posts. Proceeding with archive and cleanup."
 
-            # Get the oldest 20 posts
             oldest_posts=$(echo "$posts" | tail -n 20)
 
-            # Generate a release name based on the date range of the removed posts
             start_date=$(head -n 1 <<< "$oldest_posts" | xargs -I {} stat --format='%y' {} | cut -d' ' -f1)
             end_date=$(tail -n 1 <<< "$oldest_posts" | xargs -I {} stat --format='%y' {} | cut -d' ' -f1)
-            release_name="Archive: $start_date - $end_date"
+            release_name="archive-${start_date}_to_${end_date}"
 
-            # Create a release with the oldest posts
             echo "Creating release with the following posts: $oldest_posts"
             gh release create "$release_name" $oldest_posts --title "$release_name" --notes "Archived posts from $start_date to $end_date."
 
-            # Remove the oldest posts
             echo "Removing posts: $oldest_posts"
             rm $oldest_posts
 
-            # Commit and push the changes
             git add ./posts/
             git commit -m "optimization: Removed oldest posts and archived them"
             git push origin main
           else
             echo "No need to archive. Total posts are $total_posts."
-          fi
