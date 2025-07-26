@@ -1,0 +1,44 @@
+# This workflow automatically closes pull requests if they contain certain keywords.
+# It checks the PR title, body, and changed files for keywords listed in .github/assets/auto-close-requests-dict.txt.
+# If more than 10 of these keywords are found, the PR is closed with a comment.
+
+name: Auto Close Pull Requests with Forbidden Keywords
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  auto-close:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Read forbidden keywords
+        id: keywords
+        run: |
+          if [ ! -f .github/assets/auto-close-requests-dict.txt ]; then
+            echo "::error::Keyword dictionary not found!"
+            exit 1
+          fi
+          cat .github/assets/auto-close-requests-dict.txt | tr '\n' ',' | sed 's/,$//' > keywords.txt
+
+      - name: Check PR for forbidden keywords
+        id: check_keywords
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pip install PyGithub
+          python .github/scripts/auto_close_pr.py
+
+      - name: Close PR if forbidden keywords found
+        if: steps.check_keywords.outputs.should_close == 'true'
+        uses: peter-evans/close-pull@v3
+        with:
+          comment: ${{ steps.check_keywords.outputs.comment }}
