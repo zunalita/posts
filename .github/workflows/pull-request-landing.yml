@@ -1,30 +1,31 @@
-name: Send landing message to pull request
+name: Welcome Comment
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened]
 
 jobs:
-  welcome:
+  comment:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Read welcome message from file
-        id: read_message
-        run: |
-          content=$(cat .github/assets/pull-request-landing.md)
-          # Escape content safely using JSON
-          content_json=$(jq -R -s '.' <<< "$content")
-          echo "content=$content_json" >> $GITHUB_OUTPUT
 
       - name: Post welcome comment
         uses: actions/github-script@v7
         with:
           script: |
-            const content = ${{ steps.read_message.outputs.content }};
+            const fs = require('fs');
+            const path = '.github/assets/pull-request-landing.md';
+
+            if (!fs.existsSync(path)) {
+              core.setFailed(`File not found: ${path}`);
+              return;
+            }
+
+            const content = fs.readFileSync(path, 'utf8');
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
