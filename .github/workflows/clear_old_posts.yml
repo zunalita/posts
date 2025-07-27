@@ -1,6 +1,11 @@
 name: Prune Posts and Archive
 
 on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '12 4 * * 2'  # Runs at 04:12, only on Tuesday
   workflow_dispatch:
 
 jobs:
