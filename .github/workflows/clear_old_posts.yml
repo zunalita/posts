@@ -4,9 +4,12 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'posts/**'
   schedule:
     - cron: '12 4 * * 2'  # Runs at 04:12, only on Tuesday
   workflow_dispatch:
+
 
 jobs:
   archive_old_posts:
@@ -62,8 +65,8 @@ jobs:
           tag_name: ${{ steps.prune.outputs.tag_name }}
           name: "Archive: ${{ steps.prune.outputs.tag_name }}"
           body: "Auto archive of deleted posts on ${{ steps.prune.outputs.tag_name }}"
-          draft: false
-          prerelease: false
+          draft: true
+          prerelease: true
           files: ${{ steps.prune.outputs.archive_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
