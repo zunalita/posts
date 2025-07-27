@@ -35,6 +35,14 @@ jobs:
             echo "$files_to_delete" | xargs rm -f
             echo "Files deleted."
 
+            cd ..
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add posts
+            git commit -m "chore: deleted old posts and archived on $date_tag"
+            git push origin HEAD
+            echo "Changes committed and pushed."
+
             echo "archive_name=$archive_name" >> $GITHUB_OUTPUT
             echo "deleted=true" >> $GITHUB_OUTPUT
             echo "tag_name=archive-${date_tag}" >> $GITHUB_OUTPUT
