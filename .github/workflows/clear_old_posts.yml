@@ -23,7 +23,7 @@ jobs:
           total_files=$(ls -1 | wc -l)
           echo "Total files in posts: $total_files"
 
-          if [ "$total_files" -gt 20 ]; then
+          if [ "$total_files" -gt 40 ]; then
             to_delete=$((total_files - 20))
             echo "Deleting $to_delete oldest files"
 
