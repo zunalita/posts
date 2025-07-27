@@ -1,4 +1,6 @@
 name: Validate Jekyll Posts
+permissions:
+  contents: read
 
 on:
   pull_request:
