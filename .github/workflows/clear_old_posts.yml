@@ -1,5 +1,8 @@
 name: Prune Posts and Archive
 
+permissions:
+  contents: write
+
 on:
   push:
     branches:
