@@ -1,14 +1,12 @@
-name: Archive and Limit Posts Folder as Release
+name: Prune Posts and Archive
 
 on:
-  push:
-    paths:
-      - 'posts/**'
   workflow_dispatch:
 
 jobs:
-  archive-and-prune:
+  archive_old_posts:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -19,6 +17,7 @@ jobs:
           cd posts
           total_files=$(ls -1 | wc -l)
           echo "Total files in posts: $total_files"
+
           if [ "$total_files" -gt 20 ]; then
             to_delete=$((total_files - 20))
             echo "Deleting $to_delete oldest files"
@@ -26,39 +25,30 @@ jobs:
             files_to_delete=$(ls -1tr | head -n $to_delete)
             echo "$files_to_delete"
 
-            archive_name="../Archive-$(date +'%Y-%m-%d').tar.gz"
+            date_tag=$(date +'%Y-%m-%d')
+            archive_name="../Archive-${date_tag}.tar.gz"
             echo "Creating archive $archive_name"
 
-            # Create the archive first
             tar -czf "$archive_name" $files_to_delete
             echo "Archive created."
 
-            # Then delete the files
             echo "$files_to_delete" | xargs rm -f
             echo "Files deleted."
 
             echo "archive_name=$archive_name" >> $GITHUB_OUTPUT
             echo "deleted=true" >> $GITHUB_OUTPUT
+            echo "tag_name=archive-${date_tag}" >> $GITHUB_OUTPUT
           else
             echo "deleted=false" >> $GITHUB_OUTPUT
           fi
-
-      - name: Commit changes if files deleted
-        if: steps.prune.outputs.deleted == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add posts/
-          git commit -m "chore: prune posts folder to max 20 files"
-          git push
 
       - name: Create or update release with archive
         if: steps.prune.outputs.deleted == 'true'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: "archive-$(date +'%Y-%m-%d')"
-          name: "Archive: $(date +'%Y-%m-%d')"
-          body: "Auto archive of deleted posts on $(date +'%Y-%m-%d')"
+          tag_name: ${{ steps.prune.outputs.tag_name }}
+          name: "Archive: ${{ steps.prune.outputs.tag_name }}"
+          body: "Auto archive of deleted posts on ${{ steps.prune.outputs.tag_name }}"
           draft: false
           prerelease: false
           files: ${{ steps.prune.outputs.archive_name }}
