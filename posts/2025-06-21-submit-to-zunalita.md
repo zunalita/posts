@@ -4,6 +4,8 @@ title: "Submit to Zunalita"
 author: "zunalita-admin"
 date: "2025-06-21T19:48:25.436Z"
 tags: ["update", "announcement"]
+category: "Announcement"
+image_alt: "A hand writing on paper with a pen"
 ---
 
 We’re thrilled to announce a brand new feature on the Zunalita Blog! Starting today, you can create and submit your own posts directly to be featured on the site.

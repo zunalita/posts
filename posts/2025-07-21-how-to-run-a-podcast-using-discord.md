@@ -4,6 +4,9 @@ title: "How to Run a Podcast Using Discord"
 author: "zunalita-admin"
 date: "2025-07-21T23:09:20.247Z"
 tags: ["discord", "craig", "podcast", "diy", "tips"]
+category: "Technology"
+image: "https://thfvnext.bing.com/th/id/OIP.fSvc4eonvNF5jM_CuQzTnwHaDt?w=347&h=174&c=7&r=0&o=7&cb=thfvnext&pid=1.7&rm=3"
+image_alt: "A professional podcast microphone setup in a studio"
 generator: post-creator
 ---
 

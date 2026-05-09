@@ -4,6 +4,9 @@ title: "Renaissance Art: A New Vision"
 author: "5q0r"
 date: "2025-07-08T23:04:26.902Z"
 tags: ["art", "renaissance", "history"]
+category: "Culture"
+image: "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=900&q=80&fit=crop"
+image_alt: "A gallery wall with classical renaissance paintings"
 generator: post-creator
 ---
 
