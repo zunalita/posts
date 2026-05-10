@@ -4,6 +4,9 @@ title: "What We Expect from Zunalita in 2026"
 author: "zaorinu"
 date: "2025-12-30T14:31:54.507Z"
 tags: ["update"]
+category: "Update"
+image: "https://raw.githubusercontent.com/getcyonic/brand/refs/heads/main/icons/banner.png"
+image_alt: "Looking ahead — a clear horizon at dusk"
 generator: post-creator
 ---
 

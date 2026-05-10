@@ -4,6 +4,9 @@ title: "Minimalism in a Digital World"
 author: "5q0r"
 date: "2025-07-05T00:56:33.804Z"
 tags: ["minimalism", "philosophy"]
+category: "Philosophy"
+image: ""
+image_alt: "A clean, bright minimalist room with white walls"
 generator: post-creator
 ---
 
