@@ -1,3 +1,9 @@
+> [!IMPORTANT]
+> **Zunalita is currently on pause.**
+>
+> Development is expected to resume in **2028**.
+> The source code remains available at **https://github.com/zunalita/zunalita.github.io**.
+
 # Zunalita Posts Mirror
 
 **Zunalita Posts** is a mirror repository for blog posts powered by the [Zunalita Blog Platform](https://zunalita.github.io). This repository stores posts that are made available through the community collaboration on the Zunalita blog.
